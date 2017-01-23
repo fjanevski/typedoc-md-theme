@@ -1,0 +1,35 @@
+{
+  "name": "typedoc-md-theme",
+  "version": "1.0.0",
+  "description": "A simple markdown theme for typedoc.",
+  "main": "bin/typedoc",
+  "scripts": {
+    "test": "bin/typedoc --options typedoc.json --source testSrc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/thepalebluedot/typedoc-md-theme.git"
+  },
+  "keywords": [
+    "typedoc",
+    "markdown",
+    "theme",
+    "md",
+    "typescript",
+    "documentation",
+    "generator"
+  ],
+  "author": "Alejandro Santander <palebluedot@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/thepalebluedot/typedoc-md-theme/issues"
+  },
+  "homepage": "https://github.com/thepalebluedot/typedoc-md-theme#readme",
+  "devDependencies": {
+    "typedoc": "^0.5.5",
+    "typescript": "^2.1.5"
+  },
+  "files": [
+    "bin/"
+  ]
+}

@@ -1,0 +1,136 @@
+#!/usr/bin/env node
+
+var typedoc = require('typedoc');
+var handlebars = require('handlebars');
+var fs = require('fs');
+
+console.log("~typedoc~ running typedoc API...");
+
+// Parse parameters.
+var paramName;
+var paramVal;
+var optionsPath;
+var srcPath;
+if (process.argv.length > 2) {
+    for(var p = 2; p < process.argv.length; p++) {
+        paramName = process.argv[p];
+        if (paramName === "--options") {
+            paramVal = process.argv[p + 1];
+            if (paramVal != null) {
+                optionsPath = paramVal;
+            }
+        }
+        if (paramName === "--source") {
+            paramVal = process.argv[p + 1];
+            if (paramVal != null) {
+                srcPath = paramVal;
+            }
+        }
+    }
+}
+
+// Prepare options.
+// This is a json object that is passed to the typedoc api,
+// and is where you set all the doc generation options.
+var options;
+if(optionsPath != null) {
+    console.log("~typedoc~ using options from: " + optionsPath);
+    options = JSON.parse(fs.readFileSync(optionsPath, 'utf8'));
+}
+else {
+    options = {
+        "theme": ".",
+        "out": "docs"
+    }
+}
+
+// Prepare path.
+srcPath = srcPath == null ? "src" : srcPath;
+console.log("~typedoc~ using ts sources from: " + srcPath);
+
+// Initialize typedoc API.
+console.log("~typedoc~ options: " + JSON.stringify(options));
+var app = new typedoc.Application(options);
+
+// Register handlebars helpers.
+handlebars.registerHelper('newLine', function () { return '\n'; });
+
+// Tweak typedoc in order to:
+// 1. Output files with .md extensions
+// 2. Produce internal links with .md extensions
+// 3. Identify old docs when there is an index.md file present.
+(function modifyTypedoc() {
+    "use strict";
+
+    // Modify Renderer.prepareTheme()
+    // The theme will be modified. Intercepting this method
+    // will make sure we do that when the theme is available.
+    var origPrepareTheme = app.renderer.prepareTheme;
+    app.renderer.prepareTheme = function modPrepareTheme() {
+        console.log("~typedoc~ modifying prepareTheme()");
+
+        var success = origPrepareTheme.call(this);
+
+        // (1) Modify file extensions.
+        var origGetUrls = app.renderer.theme.getUrls;
+        app.renderer.theme.getUrls = function modGetURls(project) {
+            console.log("~typedoc~   modifying theme.getUrls()");
+
+            function replaceModelUrlExtention(model) {
+                if (!model) { return; }
+                model.url = replaceExtention(model.url);
+                model.children && model.children.forEach(replaceModelUrlExtention);
+            }
+
+            // Modify UrlMapping objects.
+            var origUrls = origGetUrls.call(this, project);
+            var modUrls = origUrls.map(function(urlMapping) {
+                replaceModelUrlExtention(urlMapping.model);
+                urlMapping.url = replaceExtention(urlMapping.url);
+                console.log("~typedoc~     url: " + urlMapping.url);
+                return urlMapping;
+            });
+
+            return modUrls;
+        }
+
+        // (2) Modify link urls.
+        var origGetNavigation = app.renderer.theme.getNavigation;
+        app.renderer.theme.getNavigation = function modGetNavigation(project) {
+            console.log("~typedoc~   modifying theme.getNavigation()");
+
+            function replaceNavigationExtention(navigation) {
+                navigation.url = replaceExtention(navigation.url);
+                console.log("~typedoc~     nav: " + navigation.url);
+                if (navigation.dedicatedUrls) {
+                    navigation.dedicatedUrls = navigation.dedicatedUrls.map(replaceExtention);
+                }
+                navigation.children && navigation.children.forEach(replaceNavigationExtention);
+            }
+
+            var navigation = origGetNavigation.call(this, project);
+            replaceNavigationExtention(navigation)
+
+            return navigation;
+        }
+
+        // (3) Modify existing files check.
+        app.renderer.theme.isOutputDirectory = function(path) {
+            return fs.existsSync(path + "/index.md");
+        }
+
+        return success;
+    };
+})();
+
+// Trigger doc generation.
+var files = app.expandInputFiles([srcPath]);
+app.generateDocs(files, options.out);
+
+// ----------------------------
+// Utils
+// ----------------------------
+
+function replaceExtention(path) {
+    return path ? path.replace(/\.html($|#.*$)/, '.md$1') : path;
+}

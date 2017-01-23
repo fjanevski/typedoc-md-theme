@@ -1,0 +1,10 @@
+{
+  "theme": "./",
+  "mode": "modules",
+  "moduleResolution": "node",
+  "tsconfig": "tsconfig.json",
+  "includeDeclarations": true,
+  "ignoreCompilerErrors": true,
+  "excludePrivate": true,
+  "out": "docs"
+}
